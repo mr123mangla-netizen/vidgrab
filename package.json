@@ -1,3 +1,4 @@
+
 {
   "name": "vidgrab-downloader",
   "version": "1.0.0",
@@ -7,6 +8,6 @@
   },
   "dependencies": {
     "express": "^4.19.2",
-    "@distube/yt-dlp": "^latest"
+    "@distube/yt-dlp": "^2.0.1"
   }
 }
