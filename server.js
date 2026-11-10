@@ -1,12 +1,13 @@
-const express = require('express');
-const { YtDlp } = require('@distube/yt-dlp');
+const express = require("express");
+const youtubedl = require("youtube-dl-exec");
 
 const app = express();
-const ytdlp = new YtDlp();
+const PORT = process.env.PORT || 3000;
 
-app.use(express.json());
+app.use(express.json({ limit: "10kb" }));
 
-app.get('/', (req, res) => {
+// Serve the frontend UI on the homepage
+app.get("/", (req, res) => {
   res.send(`
     <!DOCTYPE html>
     <html>
@@ -27,31 +28,42 @@ app.get('/', (req, res) => {
     <body>
       <div class="container">
         <h1>VidGrab</h1>
-        <p>Download video reels and images instantly</p>
-        <input type="text" id="urlInput" placeholder="Paste link here (Instagram, YouTube, etc.)">
-        <button onclick="fetchDownload()">Grab Content</button>
+        <p>Download video and media instantly</p>
+        <input type="text" id="urlInput" placeholder="Paste video link here...">
+        <button onclick="startDownload()">Download Video</button>
         <div id="result"></div>
       </div>
       <script>
-        async function fetchDownload() {
+        async function startDownload() {
           const url = document.getElementById('urlInput').value;
           const resultDiv = document.getElementById('result');
           if (!url) return alert('Please paste a link first!');
-          resultDiv.innerHTML = "Processing your link...";
+          
+          resultDiv.innerHTML = "Processing download...";
+          
           try {
-            const res = await fetch('/api/get-link', {
+            const res = await fetch('/api/download', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ url })
             });
-            const data = await res.json();
-            if (data.downloadUrl) {
-              resultDiv.innerHTML = \`<a href="\${data.downloadUrl}" target="_blank" download>Download File Now</a>\`;
+            
+            if (res.ok) {
+              const blob = await res.blob();
+              const downloadUrl = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = downloadUrl;
+              a.download = 'vidgrab-video.mp4';
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              resultDiv.innerHTML = "Download started successfully!";
             } else {
-              resultDiv.innerHTML = "Error: Could not retrieve download link.";
+              const data = await res.json();
+              resultDiv.innerHTML = "Error: " + (data.error || "Failed to download.");
             }
           } catch (err) {
-            resultDiv.innerHTML = "Error fetching link. Try another URL.";
+            resultDiv.innerHTML = "Error connecting to server.";
           }
         }
       </script>
@@ -60,15 +72,90 @@ app.get('/', (req, res) => {
   `);
 });
 
-app.post('/api/get-link', async (req, res) => {
-  try {
-    const info = await ytdlp.getInfo(req.body.url);
-    const downloadUrl = info.url || (info.formats && info.formats[0].url);
-    res.json({ downloadUrl });
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to process link' });
-  }
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "OK" });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`VidGrab server running on port ${PORT}`));
+// Validate submitted URLs
+function validateUrl(value) {
+  try {
+    const parsed = new URL(value);
+    if (!["http:", "https:"].includes(parsed.protocol)) return false;
+    const host = parsed.hostname.toLowerCase();
+    if (
+      host === "localhost" ||
+      host.endsWith(".localhost") ||
+      host === "127.0.0.1" ||
+      host === "::1" ||
+      host.startsWith("10.") ||
+      host.startsWith("192.168.")
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Download endpoint
+app.post("/api/download", (req, res) => {
+  const { url } = req.body;
+
+  if (!url || !validateUrl(url)) {
+    return res.status(400).json({ error: "Invalid video URL." });
+  }
+
+  const downloader = youtubedl.exec(url, {
+    output: "-",
+    format: "best[ext=mp4][acodec!=none][vcodec!=none]/best[acodec!=none][vcodec!=none]",
+    noPlaylist: true,
+    noWarnings: true,
+    noProgress: true
+  }, {
+    timeout: 600000
+  });
+
+  let errorOutput = "";
+
+  downloader.stderr.on("data", chunk => {
+    errorOutput = (errorOutput + chunk.toString()).slice(-4000);
+  });
+
+  downloader.on("error", error => {
+    console.error("Downloader error:", error.message);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Unable to start the download." });
+    } else {
+      res.destroy();
+    }
+  });
+
+  res.setHeader("Content-Disposition", 'attachment; filename="vidgrab-video.mp4"');
+  res.setHeader("Content-Type", "video/mp4");
+
+  downloader.stdout.pipe(res);
+
+  downloader.on("close", code => {
+    if (code !== 0) {
+      console.error("Download failed:", errorOutput);
+      if (!res.headersSent) {
+        res.status(500).json({ error: "Download failed. This video may be unavailable." });
+      } else {
+        res.destroy();
+      }
+    }
+  });
+
+  req.on("close", () => {
+    if (!res.writableEnded) {
+      downloader.kill();
+    }
+  });
+});
+
+// Start server
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`VidGrab running on port ${PORT}`);
+});
