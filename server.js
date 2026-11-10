@@ -24,6 +24,7 @@ app.get("/", (req, res) => {
         #result { margin-top: 20px; font-size: 14px; word-break: break-all; }
         a { display: inline-block; margin-top: 10px; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; }
         a:hover { background: #218838; }
+        .error { color: #dc3545; font-weight: bold; }
       </style>
     </head>
     <body>
@@ -54,10 +55,10 @@ app.get("/", (req, res) => {
             if (res.ok && data.downloadUrl) {
               resultDiv.innerHTML = \`<a href="\${data.downloadUrl}" target="_blank">Download File Now</a>\`;
             } else {
-              resultDiv.innerHTML = "Error: " + (data.error || "Failed to process.");
+              resultDiv.innerHTML = \`<span class="error">Error: \${data.error || "Failed to process."}</span>\`;
             }
           } catch (err) {
-            resultDiv.innerHTML = "Error connecting to server.";
+            resultDiv.innerHTML = '<span class="error">Error connecting to server.</span>';
           }
         }
       </script>
@@ -93,7 +94,7 @@ function validateUrl(value) {
   }
 }
 
-// Download/Extraction endpoint
+// Download/Extraction endpoint with bot-evasion flags
 app.post("/api/download", async (req, res) => {
   const { url } = req.body;
 
@@ -106,7 +107,10 @@ app.post("/api/download", async (req, res) => {
       dumpSingleJson: true,
       noPlaylist: true,
       noWarnings: true,
-      skipDownload: true
+      skipDownload: true,
+      // Add flags to help evade bot detection on cloud servers
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      extractorArgs: "youtube:player_client=android,web"
     });
 
     const videoUrl = output.url || (output.formats && output.formats[output.formats.length - 1].url);
@@ -119,7 +123,7 @@ app.post("/api/download", async (req, res) => {
 
   } catch (error) {
     console.error("Downloader error:", error.message);
-    res.status(500).json({ error: "Download failed. This video may be unavailable." });
+    res.status(500).json({ error: "YouTube is blocking cloud requests for this link. Try another video or platform." });
   }
 });
 
