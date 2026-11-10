@@ -7,6 +7,6 @@
   },
   "dependencies": {
     "express": "^4.19.2",
-    "@distube/yt-dlp": "^3.0.5"
+    "@distube/yt-dlp": "^latest"
   }
 }
