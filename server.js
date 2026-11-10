@@ -6,7 +6,7 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: "10kb" }));
 
-// Serve the frontend UI on the homepage
+// Serve the frontend web interface
 app.get("/", (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -15,14 +15,15 @@ app.get("/", (req, res) => {
       <title>VidGrab - Free Media Downloader</title>
       <style>
         body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #f4f4f9; }
-        .container { background: white; padding: 40px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 400px; }
+        .container { background: white; padding: 40px; border-radius: 12px; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.1); width: 420px; }
         h1 { color: #333; margin-bottom: 5px; }
         p { color: #666; font-size: 14px; margin-bottom: 25px; }
         input { width: 100%; padding: 12px; box-sizing: border-box; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
         button { width: 100%; padding: 12px; background: #007bff; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
         button:hover { background: #0056b3; }
-        #result { margin-top: 20px; font-weight: bold; }
-        a { display: inline-block; margin-top: 10px; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 6px; }
+        #result { margin-top: 20px; font-size: 14px; word-break: break-all; }
+        a { display: inline-block; margin-top: 10px; padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 6px; font-weight: bold; }
+        a:hover { background: #218838; }
       </style>
     </head>
     <body>
@@ -30,7 +31,7 @@ app.get("/", (req, res) => {
         <h1>VidGrab</h1>
         <p>Download video and media instantly</p>
         <input type="text" id="urlInput" placeholder="Paste video link here...">
-        <button onclick="startDownload()">Download Video</button>
+        <button onclick="startDownload()">Grab Link</button>
         <div id="result"></div>
       </div>
       <script>
@@ -39,7 +40,7 @@ app.get("/", (req, res) => {
           const resultDiv = document.getElementById('result');
           if (!url) return alert('Please paste a link first!');
           
-          resultDiv.innerHTML = "Processing download...";
+          resultDiv.innerHTML = "Processing link...";
           
           try {
             const res = await fetch('/api/download', {
@@ -48,19 +49,12 @@ app.get("/", (req, res) => {
               body: JSON.stringify({ url })
             });
             
-            if (res.ok) {
-              const blob = await res.blob();
-              const downloadUrl = window.URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = downloadUrl;
-              a.download = 'vidgrab-video.mp4';
-              document.body.appendChild(a);
-              a.click();
-              a.remove();
-              resultDiv.innerHTML = "Download started successfully!";
+            const data = await res.json();
+            
+            if (res.ok && data.downloadUrl) {
+              resultDiv.innerHTML = \`<a href="\${data.downloadUrl}" target="_blank">Download File Now</a>\`;
             } else {
-              const data = await res.json();
-              resultDiv.innerHTML = "Error: " + (data.error || "Failed to download.");
+              resultDiv.innerHTML = "Error: " + (data.error || "Failed to process.");
             }
           } catch (err) {
             resultDiv.innerHTML = "Error connecting to server.";
@@ -72,7 +66,7 @@ app.get("/", (req, res) => {
   `);
 });
 
-// Health check
+// Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK" });
 });
@@ -99,60 +93,34 @@ function validateUrl(value) {
   }
 }
 
-// Download endpoint
-app.post("/api/download", (req, res) => {
+// Download/Extraction endpoint
+app.post("/api/download", async (req, res) => {
   const { url } = req.body;
 
   if (!url || !validateUrl(url)) {
     return res.status(400).json({ error: "Invalid video URL." });
   }
 
-  const downloader = youtubedl.exec(url, {
-    output: "-",
-    format: "best[ext=mp4][acodec!=none][vcodec!=none]/best[acodec!=none][vcodec!=none]",
-    noPlaylist: true,
-    noWarnings: true,
-    noProgress: true
-  }, {
-    timeout: 600000
-  });
+  try {
+    const output = await youtubedl(url, {
+      dumpSingleJson: true,
+      noPlaylist: true,
+      noWarnings: true,
+      skipDownload: true
+    });
 
-  let errorOutput = "";
+    const videoUrl = output.url || (output.formats && output.formats[output.formats.length - 1].url);
 
-  downloader.stderr.on("data", chunk => {
-    errorOutput = (errorOutput + chunk.toString()).slice(-4000);
-  });
+    if (!videoUrl) {
+      return res.status(500).json({ error: "Could not extract direct stream URL." });
+    }
 
-  downloader.on("error", error => {
+    res.json({ downloadUrl: videoUrl });
+
+  } catch (error) {
     console.error("Downloader error:", error.message);
-    if (!res.headersSent) {
-      res.status(500).json({ error: "Unable to start the download." });
-    } else {
-      res.destroy();
-    }
-  });
-
-  res.setHeader("Content-Disposition", 'attachment; filename="vidgrab-video.mp4"');
-  res.setHeader("Content-Type", "video/mp4");
-
-  downloader.stdout.pipe(res);
-
-  downloader.on("close", code => {
-    if (code !== 0) {
-      console.error("Download failed:", errorOutput);
-      if (!res.headersSent) {
-        res.status(500).json({ error: "Download failed. This video may be unavailable." });
-      } else {
-        res.destroy();
-      }
-    }
-  });
-
-  req.on("close", () => {
-    if (!res.writableEnded) {
-      downloader.kill();
-    }
-  });
+    res.status(500).json({ error: "Download failed. This video may be unavailable." });
+  }
 });
 
 // Start server
