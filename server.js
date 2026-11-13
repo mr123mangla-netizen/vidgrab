@@ -1,3 +1,4 @@
+
 const express = require("express");
 const youtubedl = require("youtube-dl-exec");
 
@@ -6,7 +7,21 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: "10kb" }));
 
-// Serve the frontend web interface
+// ==========================================
+// GOOGLE ADSENSE VERIFICATION
+// ==========================================
+
+app.get("/ads.txt", (req, res) => {
+  res.setHeader("Content-Type", "text/plain");
+  res.status(200).send(
+    "google.com, pub-6600474514823885, DIRECT, f08c47fec0942fa0"
+  );
+});
+
+// ==========================================
+// FRONTEND WEBSITE
+// ==========================================
+
 app.get("/", (req, res) => {
   res.send(`
     <!DOCTYPE html>
@@ -39,19 +54,20 @@ app.get("/", (req, res) => {
         async function startDownload() {
           const url = document.getElementById('urlInput').value;
           const resultDiv = document.getElementById('result');
+
           if (!url) return alert('Please paste a link first!');
-          
+
           resultDiv.innerHTML = "Processing link...";
-          
+
           try {
             const res = await fetch('/api/download', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ url })
             });
-            
+
             const data = await res.json();
-            
+
             if (res.ok && data.downloadUrl) {
               resultDiv.innerHTML = \`<a href="\${data.downloadUrl}" target="_blank">Download File Now</a>\`;
             } else {
@@ -67,17 +83,28 @@ app.get("/", (req, res) => {
   `);
 });
 
-// Health check endpoint
+// ==========================================
+// HEALTH CHECK
+// ==========================================
+
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
-// Validate submitted URLs
+// ==========================================
+// URL VALIDATION
+// ==========================================
+
 function validateUrl(value) {
   try {
     const parsed = new URL(value);
-    if (!["http:", "https:"].includes(parsed.protocol)) return false;
+
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return false;
+    }
+
     const host = parsed.hostname.toLowerCase();
+
     if (
       host === "localhost" ||
       host.endsWith(".localhost") ||
@@ -88,18 +115,24 @@ function validateUrl(value) {
     ) {
       return false;
     }
+
     return true;
   } catch {
     return false;
   }
 }
 
-// Download/Extraction endpoint with bot-evasion flags
+// ==========================================
+// VIDEO INFORMATION / DOWNLOAD ENDPOINT
+// ==========================================
+
 app.post("/api/download", async (req, res) => {
   const { url } = req.body;
 
   if (!url || !validateUrl(url)) {
-    return res.status(400).json({ error: "Invalid video URL." });
+    return res.status(400).json({
+      error: "Invalid video URL."
+    });
   }
 
   try {
@@ -108,26 +141,36 @@ app.post("/api/download", async (req, res) => {
       noPlaylist: true,
       noWarnings: true,
       skipDownload: true,
-      // Add flags to help evade bot detection on cloud servers
       userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
       extractorArgs: "youtube:player_client=android,web"
     });
 
-    const videoUrl = output.url || (output.formats && output.formats[output.formats.length - 1].url);
+    const videoUrl =
+      output.url ||
+      (output.formats &&
+       output.formats[output.formats.length - 1].url);
 
     if (!videoUrl) {
-      return res.status(500).json({ error: "Could not extract direct stream URL." });
+      return res.status(500).json({
+        error: "Could not extract direct stream URL."
+      });
     }
 
     res.json({ downloadUrl: videoUrl });
 
   } catch (error) {
     console.error("Downloader error:", error.message);
-    res.status(500).json({ error: "YouTube is blocking cloud requests for this link. Try another video or platform." });
+
+    res.status(500).json({
+      error: "Could not process this link. Try another video or platform."
+    });
   }
 });
 
-// Start server
+// ==========================================
+// START SERVER
+// ==========================================
+
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`VidGrab running on port ${PORT}`);
 });
