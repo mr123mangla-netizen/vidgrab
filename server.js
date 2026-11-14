@@ -27,9 +27,12 @@ app.get("/", (req, res) => {
     <!DOCTYPE html>
     <html>
     <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
       <title>VidGrab - Free Media Downloader</title>
 
-      <!-- GOOGLE ADSENSE SCRIPT -->
+      <!-- GOOGLE ADSENSE -->
       <script async
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6600474514823885"
         crossorigin="anonymous"></script>
@@ -40,6 +43,7 @@ app.get("/", (req, res) => {
           text-align: center;
           margin-top: 50px;
           background: #f4f4f9;
+          padding: 0 10px;
         }
 
         .container {
@@ -52,7 +56,10 @@ app.get("/", (req, res) => {
           max-width: calc(100% - 80px);
         }
 
-        h1 { color: #333; margin-bottom: 5px; }
+        h1 {
+          color: #333;
+          margin-bottom: 5px;
+        }
 
         p {
           color: #666;
@@ -81,7 +88,9 @@ app.get("/", (req, res) => {
           cursor: pointer;
         }
 
-        button:hover { background: #0056b3; }
+        button:hover {
+          background: #0056b3;
+        }
 
         #result {
           margin-top: 20px;
@@ -100,24 +109,34 @@ app.get("/", (req, res) => {
           font-weight: bold;
         }
 
-        a:hover { background: #218838; }
+        a:hover {
+          background: #218838;
+        }
 
         .error {
           color: #dc3545;
           font-weight: bold;
         }
 
-        /* ADSENSE TOP BANNER */
+        /* TOP BANNER AD */
+
         .ad-container {
           width: 100%;
           max-width: 728px;
-          margin: 20px auto 30px;
           min-height: 90px;
+          margin: 20px auto 30px;
         }
 
         .adsbygoogle {
           display: block;
           width: 100%;
+        }
+
+        @media (max-width: 480px) {
+          .container {
+            padding: 25px;
+            width: auto;
+          }
         }
       </style>
     </head>
@@ -129,6 +148,7 @@ app.get("/", (req, res) => {
       ================================== -->
 
       <div class="ad-container">
+
         <!-- VidGrab_Top_Banner -->
 
         <ins class="adsbygoogle"
@@ -149,6 +169,7 @@ app.get("/", (req, res) => {
       ================================== -->
 
       <div class="container">
+
         <h1>VidGrab</h1>
 
         <p>Download video and media instantly</p>
@@ -162,37 +183,62 @@ app.get("/", (req, res) => {
         <button onclick="startDownload()">Grab Link</button>
 
         <div id="result"></div>
+
       </div>
+
+      <!-- =================================
+           DOWNLOADER JAVASCRIPT
+      ================================== -->
 
       <script>
         async function startDownload() {
-          const url = document.getElementById('urlInput').value;
+
+          const url = document.getElementById('urlInput').value.trim();
           const resultDiv = document.getElementById('result');
 
-          if (!url) return alert('Please paste a link first!');
+          if (!url) {
+            return alert('Please paste a link first!');
+          }
 
           resultDiv.innerHTML = "Processing link...";
 
           try {
+
             const res = await fetch('/api/download', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json'
+              },
               body: JSON.stringify({ url })
             });
 
             const data = await res.json();
 
             if (res.ok && data.downloadUrl) {
-              resultDiv.innerHTML =
-                \`<a href="\${data.downloadUrl}" target="_blank" rel="noopener noreferrer">Download File Now</a>\`;
+
+              const link = document.createElement('a');
+              link.href = data.downloadUrl;
+              link.target = '_blank';
+              link.rel = 'noopener noreferrer';
+              link.textContent = 'Download File Now';
+
+              resultDiv.innerHTML = '';
+              resultDiv.appendChild(link);
+
             } else {
+
               resultDiv.innerHTML =
-                \`<span class="error">Error: \${data.error || "Failed to process."}</span>\`;
+                '<span class="error">Error: ' +
+                (data.error || 'Failed to process.') +
+                '</span>';
+
             }
 
           } catch (err) {
+
             resultDiv.innerHTML =
               '<span class="error">Error connecting to server.</span>';
+
           }
         }
       </script>
@@ -216,6 +262,7 @@ app.get("/api/health", (req, res) => {
 
 function validateUrl(value) {
   try {
+
     const parsed = new URL(value);
 
     if (!["http:", "https:"].includes(parsed.protocol)) {
@@ -230,12 +277,14 @@ function validateUrl(value) {
       host === "127.0.0.1" ||
       host === "::1" ||
       host.startsWith("10.") ||
-      host.startsWith("192.168.")
+      host.startsWith("192.168.") ||
+      host.startsWith("172.16.")
     ) {
       return false;
     }
 
     return true;
+
   } catch {
     return false;
   }
@@ -246,6 +295,7 @@ function validateUrl(value) {
 // ==========================================
 
 app.post("/api/download", async (req, res) => {
+
   const { url } = req.body;
 
   if (!url || !validateUrl(url)) {
@@ -255,12 +305,16 @@ app.post("/api/download", async (req, res) => {
   }
 
   try {
+
     const output = await youtubedl(url, {
       dumpSingleJson: true,
       noPlaylist: true,
       noWarnings: true,
       skipDownload: true,
-      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+
+      userAgent:
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+
       extractorArgs: "youtube:player_client=android,web"
     });
 
@@ -275,14 +329,18 @@ app.post("/api/download", async (req, res) => {
       });
     }
 
-    res.json({ downloadUrl: videoUrl });
+    res.json({
+      downloadUrl: videoUrl
+    });
 
   } catch (error) {
+
     console.error("Downloader error:", error.message);
 
     res.status(500).json({
       error: "Could not process this link. Try another video or platform."
     });
+
   }
 });
 
@@ -291,6 +349,5 @@ app.post("/api/download", async (req, res) => {
 // ==========================================
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(\`VidGrab running on port \${PORT}\`);
+  console.log(`VidGrab running on port ${PORT}`);
 });
-
