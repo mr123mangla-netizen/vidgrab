@@ -148,32 +148,22 @@ app.get("/", (req, res) => {
 
     <body>
 
-      <!-- =====================================
-           AD UNIT 1: VIDGRAB TOP BANNER
-           SLOT ID: 2855697695
-      ====================================== -->
+      <!-- AD UNIT 1: TOP BANNER -->
 
       <div class="ad-container">
-
-        <!-- VidGrab_Top_Banner -->
-
         <ins class="adsbygoogle"
              style="display:block"
              data-ad-client="ca-pub-6600474514823885"
              data-ad-slot="2855697695"
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
-
       </div>
 
       <script>
         (adsbygoogle = window.adsbygoogle || []).push({});
       </script>
 
-
-      <!-- =====================================
-           MAIN VIDGRAB DOWNLOADER
-      ====================================== -->
+      <!-- MAIN DOWNLOADER -->
 
       <div class="container">
 
@@ -195,33 +185,22 @@ app.get("/", (req, res) => {
 
       </div>
 
-
-      <!-- =====================================
-           AD UNIT 2: VIDGRAB MAIN AD
-           SLOT ID: 6589773621
-      ====================================== -->
+      <!-- AD UNIT 2: MAIN AD -->
 
       <div class="ad-container">
-
-        <!-- VidGrab_Main_Ad -->
-
         <ins class="adsbygoogle"
              style="display:block"
              data-ad-client="ca-pub-6600474514823885"
              data-ad-slot="6589773621"
              data-ad-format="auto"
              data-full-width-responsive="true"></ins>
-
       </div>
 
       <script>
         (adsbygoogle = window.adsbygoogle || []).push({});
       </script>
 
-
-      <!-- =====================================
-           DOWNLOADER JAVASCRIPT
-      ====================================== -->
+      <!-- DOWNLOADER JAVASCRIPT -->
 
       <script>
         async function startDownload() {
@@ -234,6 +213,7 @@ app.get("/", (req, res) => {
           }
 
           resultDiv.textContent = "Processing link...";
+          resultDiv.className = "";
 
           try {
 
