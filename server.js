@@ -32,18 +32,22 @@ app.get("/", (req, res) => {
 
       <title>VidGrab - Free Media Downloader</title>
 
-      <!-- GOOGLE ADSENSE -->
+      <!-- GOOGLE ADSENSE SCRIPT -->
       <script async
         src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6600474514823885"
         crossorigin="anonymous"></script>
 
       <style>
+        * {
+          box-sizing: border-box;
+        }
+
         body {
           font-family: Arial, sans-serif;
           text-align: center;
-          margin-top: 50px;
+          margin: 0;
+          padding: 30px 15px;
           background: #f4f4f9;
-          padding: 0 10px;
         }
 
         .container {
@@ -53,7 +57,7 @@ app.get("/", (req, res) => {
           display: inline-block;
           box-shadow: 0 4px 10px rgba(0,0,0,0.1);
           width: 420px;
-          max-width: calc(100% - 80px);
+          max-width: 100%;
         }
 
         h1 {
@@ -70,7 +74,6 @@ app.get("/", (req, res) => {
         input {
           width: 100%;
           padding: 12px;
-          box-sizing: border-box;
           margin-bottom: 15px;
           border: 1px solid #ccc;
           border-radius: 6px;
@@ -98,9 +101,8 @@ app.get("/", (req, res) => {
           word-break: break-all;
         }
 
-        a {
+        #result a {
           display: inline-block;
-          margin-top: 10px;
           padding: 10px 20px;
           background: #28a745;
           color: white;
@@ -109,7 +111,7 @@ app.get("/", (req, res) => {
           font-weight: bold;
         }
 
-        a:hover {
+        #result a:hover {
           background: #218838;
         }
 
@@ -118,13 +120,13 @@ app.get("/", (req, res) => {
           font-weight: bold;
         }
 
-        /* TOP BANNER AD */
+        /* ADSENSE AD CONTAINERS */
 
         .ad-container {
           width: 100%;
           max-width: 728px;
-          min-height: 90px;
           margin: 20px auto 30px;
+          min-height: 90px;
         }
 
         .adsbygoogle {
@@ -133,9 +135,12 @@ app.get("/", (req, res) => {
         }
 
         @media (max-width: 480px) {
+          body {
+            padding: 20px 10px;
+          }
+
           .container {
             padding: 25px;
-            width: auto;
           }
         }
       </style>
@@ -143,9 +148,10 @@ app.get("/", (req, res) => {
 
     <body>
 
-      <!-- =================================
-           VIDGRAB TOP BANNER AD
-      ================================== -->
+      <!-- =====================================
+           AD UNIT 1: VIDGRAB TOP BANNER
+           SLOT ID: 2855697695
+      ====================================== -->
 
       <div class="ad-container">
 
@@ -164,9 +170,10 @@ app.get("/", (req, res) => {
         (adsbygoogle = window.adsbygoogle || []).push({});
       </script>
 
-      <!-- =================================
+
+      <!-- =====================================
            MAIN VIDGRAB DOWNLOADER
-      ================================== -->
+      ====================================== -->
 
       <div class="container">
 
@@ -180,15 +187,41 @@ app.get("/", (req, res) => {
           placeholder="Paste video link here..."
         >
 
-        <button onclick="startDownload()">Grab Link</button>
+        <button onclick="startDownload()">
+          Grab Link
+        </button>
 
         <div id="result"></div>
 
       </div>
 
-      <!-- =================================
+
+      <!-- =====================================
+           AD UNIT 2: VIDGRAB MAIN AD
+           SLOT ID: 6589773621
+      ====================================== -->
+
+      <div class="ad-container">
+
+        <!-- VidGrab_Main_Ad -->
+
+        <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-6600474514823885"
+             data-ad-slot="6589773621"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+
+      </div>
+
+      <script>
+        (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+
+
+      <!-- =====================================
            DOWNLOADER JAVASCRIPT
-      ================================== -->
+      ====================================== -->
 
       <script>
         async function startDownload() {
@@ -200,7 +233,7 @@ app.get("/", (req, res) => {
             return alert('Please paste a link first!');
           }
 
-          resultDiv.innerHTML = "Processing link...";
+          resultDiv.textContent = "Processing link...";
 
           try {
 
@@ -217,27 +250,29 @@ app.get("/", (req, res) => {
             if (res.ok && data.downloadUrl) {
 
               const link = document.createElement('a');
+
               link.href = data.downloadUrl;
               link.target = '_blank';
               link.rel = 'noopener noreferrer';
               link.textContent = 'Download File Now';
 
-              resultDiv.innerHTML = '';
-              resultDiv.appendChild(link);
+              resultDiv.replaceChildren(link);
 
             } else {
 
-              resultDiv.innerHTML =
-                '<span class="error">Error: ' +
-                (data.error || 'Failed to process.') +
-                '</span>';
+              resultDiv.textContent =
+                "Error: " + (data.error || "Failed to process.");
+
+              resultDiv.className = "error";
 
             }
 
           } catch (err) {
 
-            resultDiv.innerHTML =
-              '<span class="error">Error connecting to server.</span>';
+            resultDiv.textContent =
+              "Error connecting to server.";
+
+            resultDiv.className = "error";
 
           }
         }
@@ -277,8 +312,7 @@ function validateUrl(value) {
       host === "127.0.0.1" ||
       host === "::1" ||
       host.startsWith("10.") ||
-      host.startsWith("192.168.") ||
-      host.startsWith("172.16.")
+      host.startsWith("192.168.")
     ) {
       return false;
     }
